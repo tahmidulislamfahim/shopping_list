@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shopping_list/data/categories.dart';
@@ -18,13 +17,14 @@ class _GroceryListState extends State<GroceryList> {
   List<GroceryItem> _groceryItems = [];
   var _isLoading = true;
   String? _error;
+
   @override
   void initState() {
     super.initState();
     _loadItems();
   }
 
-  void _loadItems() async {
+  Future<void> _loadItems() async {
     final url = Uri.https(
       'shopping-list-60be3-default-rtdb.firebaseio.com',
       'shopping-list.json',
@@ -74,6 +74,7 @@ class _GroceryListState extends State<GroceryList> {
     } catch (error) {
       setState(() {
         _error = 'Something went wrong. Please try again later.';
+        _isLoading = false;
       });
     }
   }
@@ -110,15 +111,40 @@ class _GroceryListState extends State<GroceryList> {
 
   @override
   Widget build(BuildContext context) {
-    Widget content = const Center(
-      child: Text(
-        'No items added yet.',
-        style: TextStyle(color: Colors.white, fontSize: 18),
-      ),
-    );
+    Widget content;
+
     if (_isLoading) {
-      content = const Center(child: CircularProgressIndicator());
-    } else if (_groceryItems.isNotEmpty) {
+      content = ListView(
+        children: const [
+          SizedBox(height: 300),
+          Center(child: CircularProgressIndicator()),
+        ],
+      );
+    } else if (_error != null) {
+      content = ListView(
+        children: [
+          SizedBox(height: 300),
+          Center(
+            child: Text(
+              _error!,
+              style: const TextStyle(color: Colors.white, fontSize: 18),
+            ),
+          ),
+        ],
+      );
+    } else if (_groceryItems.isEmpty) {
+      content = ListView(
+        children: const [
+          SizedBox(height: 300),
+          Center(
+            child: Text(
+              'No items added yet.',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+          ),
+        ],
+      );
+    } else {
       content = ListView.builder(
         itemCount: _groceryItems.length,
         itemBuilder: (context, index) {
@@ -139,20 +165,13 @@ class _GroceryListState extends State<GroceryList> {
         },
       );
     }
-    if (_error != null) {
-      content = Center(
-        child: Text(
-          _error!,
-          style: const TextStyle(color: Colors.white, fontSize: 18),
-        ),
-      );
-    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Grocery List'),
         actions: [IconButton(icon: const Icon(Icons.add), onPressed: _addItem)],
       ),
-      body: content,
+      body: RefreshIndicator(onRefresh: _loadItems, child: content),
     );
   }
 }
